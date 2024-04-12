@@ -1159,13 +1159,16 @@ apply (const Tpetra::MultiVector<scalar_type,local_ordinal_type,global_ordinal_t
       auto X_view = X.getLocalViewHost(Tpetra::Access::ReadOnly);
       auto Y_view = Y.getLocalViewHost(Tpetra::Access::ReadWrite);
 
-      auto L_graph_host = L_block_->getCrsGraph().getLocalGraphHost();
-      auto U_graph_host = U_block_->getCrsGraph().getLocalGraphHost();
+      auto L_row_ptrs_host = L_block_->getCrsGraph().getLocalRowPtrsHost();
+      auto L_entries_host = L_block_->getCrsGraph().getLocalIndicesHost();
+      auto U_row_ptrs_host = U_block_->getCrsGraph().getLocalRowPtrsHost();
+      auto U_entries_host = U_block_->getCrsGraph().getLocalIndicesHost();
       auto L_values_host = L_block_->getValuesHost();
       auto U_values_host = U_block_->getValuesHost();
 
-      Kokkos::View<scalar_type*,  Kokkos::LayoutRight, Kokkos::Serial> values_tmp;
-      local_matrix_host_type L_block_local_host(std::string("L_block_local_host"), L_block_->getLocalNumRows(), values_tmp, L_graph_host, blockSize_);
+      //Kokkos::View<scalar_type*,  Kokkos::LayoutRight, Kokkos::Serial> values_tmp;
+      const auto numRows = L_block_->getLocalNumRows();
+      local_matrix_host_type L_block_local_host("L_block_local_host", numRows, numRows, L_entries_host.size(), L_values_host, L_row_ptrs_host, L_entries_host, blockSize_);
       // local_matrix_host_type U_block_local_host("U_block_local_host", U_block_->getLocalNumRows(), U_values_host, U_graph_host, blockSize_);
 
       if (mode == Teuchos::NO_TRANS) {
