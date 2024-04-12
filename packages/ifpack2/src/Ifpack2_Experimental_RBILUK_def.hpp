@@ -1166,24 +1166,32 @@ apply (const Tpetra::MultiVector<scalar_type,local_ordinal_type,global_ordinal_t
       auto L_values_host = L_block_->getValuesHost();
       auto U_values_host = U_block_->getValuesHost();
 
-      //Kokkos::View<scalar_type*,  Kokkos::LayoutRight, Kokkos::Serial> values_tmp;
+      Kokkos::View<scalar_type*, Kokkos::Serial> L_values_host_non_const("", L_values_host.size());
+      Kokkos::View<local_ordinal_type*, Kokkos::Serial> L_entries_host_non_const("", L_entries_host.size());
+      Kokkos::deep_copy(L_values_host_non_const, L_values_host);
+      Kokkos::deep_copy(L_entries_host_non_const, L_entries_host);
+
+      Kokkos::View<scalar_type*, Kokkos::Serial> U_values_host_non_const("", U_values_host.size());
+      Kokkos::View<local_ordinal_type*, Kokkos::Serial> U_entries_host_non_const("", U_entries_host.size());
+      Kokkos::deep_copy(U_values_host_non_const, U_values_host);
+      Kokkos::deep_copy(U_entries_host_non_const, U_entries_host);
+
       const auto numRows = L_block_->getLocalNumRows();
-      local_matrix_host_type L_block_local_host("L_block_local_host", numRows, numRows, L_entries_host.size(), L_values_host, L_row_ptrs_host, L_entries_host, blockSize_);
-      // local_matrix_host_type U_block_local_host("U_block_local_host", U_block_->getLocalNumRows(), U_values_host, U_graph_host, blockSize_);
+      local_matrix_host_type L_block_local_host("L_block_local_host", numRows, numRows, L_entries_host.size(), L_values_host_non_const, L_row_ptrs_host, L_entries_host_non_const, blockSize_);
+      local_matrix_host_type U_block_local_host("U_block_local_host", numRows, numRows, U_entries_host.size(), U_values_host_non_const, U_row_ptrs_host, U_entries_host_non_const, blockSize_);
 
       if (mode == Teuchos::NO_TRANS) {
         KokkosSparse::trsv("L", "N", "N", L_block_local_host, X_view, Y_view);
-        //KokkosSparse::trsv("U", "N", "N", U_block_local_host, Y_view, Y_view);
+        KokkosSparse::trsv("U", "N", "N", U_block_local_host, Y_view, Y_view);
         KokkosBlas::axpby(alpha, Y_view, beta, Y_view);
       }
       else {
-        //KokkosSparse::trsv("U", "T", "N", U_block_local_host, X_view, Y_view);
+        KokkosSparse::trsv("U", "T", "N", U_block_local_host, X_view, Y_view);
         KokkosSparse::trsv("L", "T", "N", L_block_local_host, Y_view, Y_view);
         KokkosBlas::axpby(alpha, Y_view, beta, Y_view);
       }
 
-      // Y.modify();
-      // Y.sync();
+      //Y.getWrappedDualView().sync();
     }
   } // Stop timing
 
